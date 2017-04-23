@@ -81,13 +81,15 @@ public class Tetris extends Game {
 		}
 		if (!tryMoveBlok(DOWN)){
 			for (int i = 0; i< BLOK_SIZE_IN_BLOCKS; i++){
-				PlayingField[currentBlockPositionY + blok.getY(i)][currentBlockPositionX +blok.getX(i)] = POSITION_FILLED;
+                int CoordinateY = currentBlockPositionY + blok.getY(i);
+                int CoordinateX = currentBlockPositionX + blok.getX(i);
+                PlayingField[CoordinateY][CoordinateX] = POSITION_FILLED;
 			}
 			isBlockAlreadyFalling = false;
 		} else {
 			currentBlockPositionY++;
 		}
-		scanLine();
+		scanLinesForDeletion();
 	}
 
 	private void ResetToStartingValues() {
@@ -108,30 +110,43 @@ public class Tetris extends Game {
 	}
 
 	@Override
-	public void draw(Graphics2D g) {
-		g.fillRect(0, 0, width, height);
-		g.setColor(Color.LIGHT_GRAY);
-		g.fillRect(0, 0, 250, 500);
-		g.fillRect(275, 0, 150, 150);
-		
-		
-		g.setColor(Color.black);
-		for (int i = 0; i<20; i++){
-			for (int j = 0; j<10; j++){
-				if (PlayingField[i][j]> POSITION_EMPTY) {
-					g.fillRect(j*25,i*25, blockSizeInPixels, blockSizeInPixels);
-				}	
-			}
-		}
-		
-		if(isBlockAlreadyFalling) {
-			for (int i = 0; i<4; i++){
-				g.fillRect((currentBlockPositionX +blok.getX(i))*25,(currentBlockPositionY +blok.getY(i))*25, blockSizeInPixels, blockSizeInPixels);
-			}
-		}
-	}
-	
-	public boolean tryMoveBlok(int direction) {
+	public void draw(Graphics2D graphics) {
+        repaintPlayingFieldBackground(graphics);
+        drawBlocks(graphics);
+        drawCurrentFallingBlock(graphics);
+    }
+
+    private void drawCurrentFallingBlock(Graphics2D graphics) {
+        if(isBlockAlreadyFalling) {
+            for (int i = 0; i<BLOK_SIZE_IN_BLOCKS; i++){
+                int pixelCoordinateX = (currentBlockPositionX + blok.getX(i)) * blockSizeInPixels;
+                int pixelCoordinateY = (currentBlockPositionY + blok.getY(i)) * blockSizeInPixels;
+                graphics.fillRect(pixelCoordinateX, pixelCoordinateY, blockSizeInPixels, blockSizeInPixels);
+            }
+        }
+    }
+
+    private void drawBlocks(Graphics2D graphics) {
+        graphics.setColor(Color.black);
+        for (int i = 0; i<BLOCK_COUNT_WINDOW_HEIGHT; i++){
+            for (int j = 0; j<BLOCK_COUNT_WINDOW_WIDTH; j++){
+                if (PlayingField[i][j] > POSITION_EMPTY) {
+                    graphics.fillRect(j*blockSizeInPixels,i*blockSizeInPixels, blockSizeInPixels, blockSizeInPixels);
+                }
+            }
+        }
+    }
+
+    private void repaintPlayingFieldBackground(Graphics2D g) {
+        g.fillRect(0, 0, width, height);
+        g.setColor(Color.LIGHT_GRAY);
+        int playingFieldWidth = BLOCK_COUNT_WINDOW_WIDTH * blockSizeInPixels;
+        int playingFieldHeight = BLOCK_COUNT_WINDOW_HEIGHT * blockSizeInPixels;
+        g.fillRect(0, 0, playingFieldWidth, playingFieldHeight);
+        g.fillRect(275, 0, 150, 150);
+    }
+
+    public boolean tryMoveBlok(int direction) {
 		boolean isAllowedToMove = true;
 		if (direction == LEFT){
 			isAllowedToMove = isAllowedToMoveLeft(isAllowedToMove);
@@ -145,7 +160,9 @@ public class Tetris extends Game {
 
 	private boolean isAllowedToMoveRight(boolean b) {
 		for (int i = 0; i<BLOK_SIZE_IN_BLOCKS; i++){
-            if (hasBlockReachedWidthLimit(i) || PlayingField[currentBlockPositionY +blok.getY(i)][blok.getX(i)+1] != POSITION_EMPTY){
+            int blockCoordinateY = currentBlockPositionY + blok.getY(i);
+            int blockCoordinateX = blok.getX(i) + 1;
+            if (hasBlockReachedWidthLimit(i) || PlayingField[blockCoordinateY][blockCoordinateX] != POSITION_EMPTY){
                 b = false; break;
             }
         }
@@ -158,7 +175,9 @@ public class Tetris extends Game {
 
 	private boolean isAllowedToMoveDown(boolean b) {
 		for (int i = 0; i<BLOK_SIZE_IN_BLOCKS; i++){
-            if (hasBlockReachedHeightLimit() || PlayingField[currentBlockPositionY +1+blok.getY(i)][currentBlockPositionX +blok.getX(i)] != POSITION_EMPTY){
+            int blockCoordinateY = currentBlockPositionY + 1 + blok.getY(i);
+            int blockCoordinateX = currentBlockPositionX + blok.getX(i);
+            if (hasBlockReachedHeightLimit() || PlayingField[blockCoordinateY][blockCoordinateX] != POSITION_EMPTY){
                 b = false; break;
             }
         }
@@ -171,7 +190,9 @@ public class Tetris extends Game {
 
 	private boolean isAllowedToMoveLeft(boolean b) {
 		for(int i = 0; i<BLOK_SIZE_IN_BLOCKS;i++){
-            if (hasBlockReachedWidthLimitOnLeftSide() || PlayingField[currentBlockPositionY +blok.getY(i)][currentBlockPositionX -1+blok.getX(i)] != POSITION_EMPTY){
+            int blockCoordinateY = currentBlockPositionY + blok.getY(i);
+            int blockCoordinateX = currentBlockPositionX - 1 + blok.getX(i);
+            if (hasBlockReachedWidthLimitOnLeftSide() || PlayingField[blockCoordinateY][blockCoordinateX] != POSITION_EMPTY){
                 b = false; break;
             }
         }
@@ -182,7 +203,7 @@ public class Tetris extends Game {
 		return currentBlockPositionX <= 0;
 	}
 
-	public void scanLine(){
+	public void scanLinesForDeletion(){
 		for (int i = 0; i<BLOCK_COUNT_WINDOW_HEIGHT; i++){
 			boolean lineFilledWithBlocks = true;
 			for (int j = 0; j<BLOCK_COUNT_WINDOW_WIDTH; j++){
