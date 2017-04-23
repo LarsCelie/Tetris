@@ -7,18 +7,31 @@ import java.awt.event.KeyEvent;
 import engine.*;
 
 public class Tetris extends Game {
-	private int x = 0, y = 0, bSize = 25, nextBlock = 3;
-	private int[][] field;
-	private boolean busy;
-	private Blok blok = null, nextBlockO = null;
-	
+	public static final int MAX_WINDOW_HEIGHT = 550;
+	public static final int MAX_WINDOW_WIDTH = 425;
+	public static final int BLOCK_COUNT_WINDOW_HEIGHT = 20;
+	public static final int BLOCK_COUNT_WINDOW_WIDTH = 10;
+	public static final int KEY_LEFT = 37;
+	public static final int KEY_RIGHT = 39;
+	public static final int KEY_DOWN = 40;
+	public static final int LEFT = -1;
+	public static final int RIGHT = 1;
+	public static final int DOWN = 0;
+	public static final int BLOK_SIZE_IN_BLOCKS = 4;
+	public static final int POSITION_FILLED = 1;
+	public static final int POSITION_EMPTY = 0;
+	private int currentBlockPositionX = 0, currentBlockPositionY = 0, blockSizeInPixels = 25, nextBlockType = 3;
+	private int[][] PlayingField;
+	private boolean isBlockAlreadyFalling;
+	private Blok blok = null;
+
 	public Tetris() {
 		title = "Tetris";
-		height = 550;
-		width = 425;
+		height = MAX_WINDOW_HEIGHT;
+		width = MAX_WINDOW_WIDTH;
 		delay = 400;
 		delay2 = 10;
-		field = new int[20][10];
+		PlayingField = new int[BLOCK_COUNT_WINDOW_HEIGHT][BLOCK_COUNT_WINDOW_WIDTH];
 	}
 	
 	public static void main(String arg[]) {
@@ -31,18 +44,19 @@ public class Tetris extends Game {
 	 * Left Arrow: keycode 37
 	 */
 	public void keyPressed(KeyEvent e) {
-		if(e.getKeyCode() == 37) {
-			if (tryMove(-1)) {
-				x--;
+		int keyCode = e.getKeyCode();
+		if(keyCode == KEY_LEFT) {
+			if (tryMoveBlok(LEFT)) {
+				currentBlockPositionX--;
 			}
 		} 
-		else if(e.getKeyCode() == 39) {
-			if (tryMove(1)) {
-				x++;
+		else if(keyCode == KEY_RIGHT) {
+			if (tryMoveBlok(RIGHT)) {
+				currentBlockPositionX++;
 			}
-		} else if(e.getKeyCode() == 40) {
-			if (tryMove(0)) {
-				y++;
+		} else if(keyCode == KEY_DOWN) {
+			if (tryMoveBlok(DOWN)) {
+				currentBlockPositionY++;
 			}
 		}
 	}
@@ -61,26 +75,34 @@ public class Tetris extends Game {
 
 	@Override
 	public void update() {
-		if(!busy) {
-			int random = nextBlock;
-			nextBlock = (int) (Math.random()*7);
-			System.out.println(random);
-			blok = new Blok(random);
-			y = 1;
-			x = 3;
-			busy = true;
+		if(!isBlockAlreadyFalling) {
+			CreateNewBlock();
+			ResetToStartingValues();
 		}
-		if (!tryMove(0)){
-			for (int i = 0; i<4; i++){
-				field[y+blok.getY(i)][x+blok.getX(i)] = 1;
+		if (!tryMoveBlok(DOWN)){
+			for (int i = 0; i< BLOK_SIZE_IN_BLOCKS; i++){
+				PlayingField[currentBlockPositionY + blok.getY(i)][currentBlockPositionX +blok.getX(i)] = POSITION_FILLED;
 			}
-			busy = false;
+			isBlockAlreadyFalling = false;
 		} else {
-			y++;
+			currentBlockPositionY++;
 		}
 		scanLine();
 	}
-	
+
+	private void ResetToStartingValues() {
+		currentBlockPositionY = 1;
+		currentBlockPositionX = 3;
+		isBlockAlreadyFalling = true;
+	}
+
+	private void CreateNewBlock() {
+		int random = nextBlockType;
+		nextBlockType = (int) (Math.random()*7);
+		System.out.println(random);
+		blok = new Blok(random);
+	}
+
 	@Override
 	public void update2() {
 	}
@@ -96,61 +118,87 @@ public class Tetris extends Game {
 		g.setColor(Color.black);
 		for (int i = 0; i<20; i++){
 			for (int j = 0; j<10; j++){
-				if (field[i][j]>0) {
-					g.fillRect(j*25,i*25,bSize,bSize);
+				if (PlayingField[i][j]> POSITION_EMPTY) {
+					g.fillRect(j*25,i*25, blockSizeInPixels, blockSizeInPixels);
 				}	
 			}
 		}
 		
-		if(busy) {
+		if(isBlockAlreadyFalling) {
 			for (int i = 0; i<4; i++){
-				g.fillRect((x+blok.getX(i))*25,(y+blok.getY(i))*25,bSize,bSize);
+				g.fillRect((currentBlockPositionX +blok.getX(i))*25,(currentBlockPositionY +blok.getY(i))*25, blockSizeInPixels, blockSizeInPixels);
 			}
 		}
 	}
 	
-	public boolean tryMove(int a) {
-		boolean b = true;
-		if (a == -1){
-			for(int i = 0; i<4;i++){
-				if (x <= 0 || field[y+blok.getY(i)][x-1+blok.getX(i)] != 0){
-					b = false; break;
-				}
-			}
-		} else if (a == 0){
-			for (int i = 0; i<4; i++){
-				if (y >= 19 || field[y+1+blok.getY(i)][x+blok.getX(i)] != 0){
-					b = false; break;
-				}
-			}		
-			
-		} else if (a == 1){
-			for (int i = 0; i<4; i++){
-				if (x+blok.getX(i) >= (9) || field[y+blok.getY(i)][blok.getX(i)+1] != 0){
-					b = false; break;
-				}
-			}
+	public boolean tryMoveBlok(int direction) {
+		boolean isAllowedToMove = true;
+		if (direction == LEFT){
+			isAllowedToMove = isAllowedToMoveLeft(isAllowedToMove);
+		} else if (direction == DOWN){
+			isAllowedToMove = isAllowedToMoveDown(isAllowedToMove);
+		} else if (direction == RIGHT){
+			isAllowedToMove = isAllowedToMoveRight(isAllowedToMove);
 		} 
+		return isAllowedToMove;
+	}
+
+	private boolean isAllowedToMoveRight(boolean b) {
+		for (int i = 0; i<BLOK_SIZE_IN_BLOCKS; i++){
+            if (hasBlockReachedWidthLimit(i) || PlayingField[currentBlockPositionY +blok.getY(i)][blok.getX(i)+1] != POSITION_EMPTY){
+                b = false; break;
+            }
+        }
 		return b;
 	}
-	
+
+	private boolean hasBlockReachedWidthLimit(int i) {
+		return currentBlockPositionX +blok.getX(i) >= (9);
+	}
+
+	private boolean isAllowedToMoveDown(boolean b) {
+		for (int i = 0; i<BLOK_SIZE_IN_BLOCKS; i++){
+            if (hasBlockReachedHeightLimit() || PlayingField[currentBlockPositionY +1+blok.getY(i)][currentBlockPositionX +blok.getX(i)] != POSITION_EMPTY){
+                b = false; break;
+            }
+        }
+		return b;
+	}
+
+	private boolean hasBlockReachedHeightLimit() {
+		return currentBlockPositionY >= 19;
+	}
+
+	private boolean isAllowedToMoveLeft(boolean b) {
+		for(int i = 0; i<BLOK_SIZE_IN_BLOCKS;i++){
+            if (hasBlockReachedWidthLimitOnLeftSide() || PlayingField[currentBlockPositionY +blok.getY(i)][currentBlockPositionX -1+blok.getX(i)] != POSITION_EMPTY){
+                b = false; break;
+            }
+        }
+		return b;
+	}
+
+	private boolean hasBlockReachedWidthLimitOnLeftSide() {
+		return currentBlockPositionX <= 0;
+	}
+
 	public void scanLine(){
-		for (int i = 0; i<20; i++){
-			boolean vol = true;
-			for (int j = 0; j<10; j++){
-				if (field[i][j]==0) {
-					vol = false;
+		for (int i = 0; i<BLOCK_COUNT_WINDOW_HEIGHT; i++){
+			boolean lineFilledWithBlocks = true;
+			for (int j = 0; j<BLOCK_COUNT_WINDOW_WIDTH; j++){
+				if (PlayingField[i][j]==POSITION_EMPTY) {
+					lineFilledWithBlocks = false;
 				}
 			}
-			if (vol) {
-				removeLine(i);
+			if (lineFilledWithBlocks) {
+				removeLineAndCascade(i);
 			}
 		}
 	}
-	public void removeLine(int a){
-		for (int i = a; i>0; i--){
-			for (int j = 0; j<10; j++){
-				field[i][j] = field[i-1][j];
+	public void removeLineAndCascade(int lineNumber){
+		for (int i = lineNumber; i>0; i--){
+			for (int j = 0; j<BLOCK_COUNT_WINDOW_WIDTH; j++){
+				PlayingField[i][j] = PlayingField[i-1][j];
 			}
 		}
 	}
